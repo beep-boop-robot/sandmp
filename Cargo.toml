@@ -1,0 +1,19 @@
+[package]
+name = "sandmp"
+version = "0.1.0"
+authors = ["c <null>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-std = "*"
+log = "*"
+simplelog = "*"
+crossbeam = "*"
+crossbeam-utils = "*"
+rayon = "*"
+
+[dependencies.futures]
+version = "*"
+features = ["thread-pool"]

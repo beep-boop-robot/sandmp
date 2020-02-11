@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 pub const BLOCK_SIZE : i32 = 16;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Particle {
     Air,
     Sand
@@ -20,7 +20,7 @@ impl ParticleBlock {
     pub fn new(pos: (i32, i32)) -> ParticleBlock {
         ParticleBlock {
             pos: pos,
-            dirty: true, // TODO might need to be configurable
+            dirty: false,
             particles: HashMap::new() 
         }
     }
@@ -33,8 +33,17 @@ impl ParticleBlock {
         self.dirty
     }
 
-    pub fn get_blocks(&self) -> Vec<((i32, i32), Particle)> {
+    pub fn all_particles(&self) -> Vec<((i32, i32), Particle)> {
         self.particles.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
     }
 
+    pub fn get_particle(&self, pos_in_block: (i32, i32)) -> &Particle {
+        // TODO option or Air on miss
+        self.particles.get(&pos_in_block).unwrap()
+    }
+
+    pub fn set_particle(&mut self, pos_in_block: (i32, i32), particle: Particle, mark_dirty: bool) {
+        self.particles.insert(pos_in_block, particle);
+        self.dirty = mark_dirty;
+    }
 }

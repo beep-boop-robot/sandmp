@@ -12,6 +12,7 @@ simplelog = "*"
 crossbeam-utils = "*"
 rand = "*"
 rayon = "*"
+rmp = "^0.8"
 
 [dependencies.futures]
 version = "*"

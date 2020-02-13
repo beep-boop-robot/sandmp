@@ -1,6 +1,7 @@
 extern crate futures;
 #[macro_use]extern crate log;
 extern crate simplelog;
+extern crate rmp;
 
 use simplelog::*;
 use std::time::{Instant, Duration};
@@ -29,12 +30,12 @@ pub fn run() {
     let pool = rayon::ThreadPoolBuilder::new().num_threads(16).build().unwrap();
 
     // DEBUG
-    for i in 0..16 {
-        for j in 0..16 {
-            read_world.write().unwrap().set_particle((i * 16,j * 16), Particle::Sand, true);
-        }
-    }
-    // read_world.write().unwrap().set_particle((0,0), Particle::Sand, true);
+    // for i in 0..16 {
+    //     for j in 0..16 {
+    //         read_world.write().unwrap().set_particle((i * 16, 0), Particle::Sand, true);
+    //     }
+    // }
+    read_world.write().unwrap().set_particle((0,0), Particle::Sand, true);
     // read_world.write().unwrap().set_particle((1,0), Particle::Sand, true);
     // read_world.write().unwrap().set_particle((2,0), Particle::Sand, true);
     // read_world.write().unwrap().set_particle((3,0), Particle::Sand, true);

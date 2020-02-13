@@ -54,4 +54,8 @@ impl ParticleBlock {
         self.texture[idx+1] = 255;
         self.texture[idx+2] = 255;
     }
+
+    pub fn get_texture(&self) -> &[u8] {
+        &self.texture
+    }
 }

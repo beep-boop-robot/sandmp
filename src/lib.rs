@@ -1,20 +1,17 @@
 extern crate futures;
 #[macro_use]extern crate log;
 extern crate simplelog;
-extern crate rayon;
 
 use simplelog::*;
-
-// use async_std::task;
-use log::{debug};
-use crossbeam;
 use std::time::{Instant, Duration};
 use std::thread;
-use std::sync::Arc;
+use std::sync::{RwLock, Arc};
+use rayon;
 
 mod particles;
 mod game;
 mod simulation;
+mod io;
 
 use game::{World, WriteState};
 use particles::{Particle, ParticleBlock};
@@ -24,17 +21,41 @@ pub fn run() {
     // if not dirty. copy it over to write state
     // else. create a new block_write_state and update the block
 
-    let _ = SimpleLogger::init(LevelFilter::Trace, Config::default());
+    let _ = SimpleLogger::init(LevelFilter::Debug, Config::default());
             
 
-    let mut read = Arc::new(World::new());
-    let mut write = Arc::new(World::new());
+    let mut read_world = Arc::new(RwLock::new(World::new()));
+    let mut write_world = Arc::new(RwLock::new(World::new()));
+    let pool = rayon::ThreadPoolBuilder::new().num_threads(16).build().unwrap();
 
     // DEBUG
-    read.set_particle((1,0), Particle::Sand, true);
+    for i in 0..16 {
+        for j in 0..16 {
+            read_world.write().unwrap().set_particle((i * 16,j * 16), Particle::Sand, true);
+        }
+    }
+    // read_world.write().unwrap().set_particle((0,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((1,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((2,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((3,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((4,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((5,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((6,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((7,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((8,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((9,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((10,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((11,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((12,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((13,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((14,0), Particle::Sand, true);
+    // read_world.write().unwrap().set_particle((15,0), Particle::Sand, true);
+
+
 
     let fps = 60;
-    let frame_sleep = 1 / fps;
+    let frame_sleep = Duration::from_millis(1000);
+    //let frame_sleep = Duration::from_millis(1 / fps);
 
     loop {
         let frame_start = Instant::now();
@@ -42,53 +63,66 @@ pub fn run() {
         // QUEUE INPUTS
 
         // UPDATE
-        let mut updated_write_stats = Vec::new();
-        crossbeam::thread::scope(|s| { // TODO probably don't actually need crossbeam
-            let mut jhandles = Vec::new();
-            // TODO iterate all blocks. queue dirty for update. clone unchanged ones
-            for dirty_pos in read.get_dirty_pos() { 
-                let read_c = read.clone();
-                let pos = dirty_pos.clone();
-                let jh = s.spawn(move |_| {
-                    let mut write = WriteState::new(pos);
-                    let updated_write = update(&read_c, write);
-                    updated_write
-                });
-                jhandles.push(jh);
-            }      
-            
-            for jh in jhandles {
-                let updated = jh.join().unwrap();
-                updated_write_stats.push(updated);
+        let mut updated_write_stats = Vec::<WriteState>::new();
+        let mut dirty_block_pos = Vec::new();
+        for (pos, block) in read_world.read().unwrap().all_blocks() {
+            if block.is_dirty() {
+                dirty_block_pos.push(pos.clone());
             }
-        }).unwrap();
-
-        for _ in updated_write_stats {
-            // TODO handle any cross-block movement and messages generated e.t.c
+            else{
+                // clone unchanged blocks into write state
+                write_world.write().unwrap().set_block(block.clone());
+            }
         }
 
-        // SWAP
-        let tmp = read;
-        read = write;
-        write = tmp;
+
+        let mut completed_writes = Vec::new();
+        for pos in dirty_block_pos {
+            let read_c = read_world.clone();
+            let write_block = ParticleBlock::new(pos.clone());
+            let jh = pool.install(move || {
+                let mut write = WriteState::new(write_block);
+                update(&read_c.read().unwrap(), &mut write);
+                write
+            });
+            completed_writes.push(jh);                
+        }   
+        
+        for w in completed_writes {
+            //let updated : WriteState = jh.join().unwrap();
+            updated_write_stats.push(w);
+        }
+
+        for write_state in updated_write_stats {
+            // TODO handle any cross-block movement and messages generated e.t.c
+            let finished_block = write_state.finish();
+            write_world.write().unwrap().set_block(finished_block);
+        }
 
         // SEND
         // look at the writestates and send each to the each client
+        // TODO for now just send the entire world. change to send just the updated parts
+        io::send_world(&write_world.read().unwrap());
+
+        // SWAP
+        let tmp = read_world;
+        read_world = write_world;
+        write_world = tmp;
+
 
         // SLEEP
         let frame_end = frame_start.elapsed();
-        trace!("Frame end {:?}micros", frame_start.elapsed().as_micros());
-        if frame_end < Duration::from_millis(frame_sleep) {
-            std::thread::sleep(Duration::from_millis(frame_sleep) - frame_end);
+        debug!("Frame end {:?}micros", frame_start.elapsed().as_micros());
+        if frame_end < frame_sleep {
+            std::thread::sleep(frame_sleep - frame_end);
         }
 
     }
 }
 
-fn update(read: &World, write: WriteState) -> WriteState {
+fn update(read: &World, write: &mut WriteState) {
     trace!("Updating {:?} {:?}", write.get_block_pos(), thread::current().id());
     for (pos, particle) in read.get_block(write.get_block_pos()).unwrap().all_particles() {
-        simulation::update_particle(pos, particle, read, &mut write);
+        simulation::update_particle(pos, particle, read, write);
     }
-    write
 }

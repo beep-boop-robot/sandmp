@@ -7,6 +7,7 @@ use simplelog::*;
 use std::time::{Instant, Duration};
 use std::thread;
 use std::sync::{RwLock, Arc};
+use std::sync::mpsc::channel;
 use rayon;
 
 mod particles;
@@ -23,8 +24,10 @@ pub fn run() {
     // else. create a new block_write_state and update the block
 
     let _ = SimpleLogger::init(LevelFilter::Debug, Config::default());
-            
-
+         
+    let (msg_in_sender, msg_in_receiver) = channel();
+    let msg_in = io::InboundMessages::new(msg_in_sender);
+    let msg_out = io::OutboundMessages::new();
     let mut read_world = Arc::new(RwLock::new(World::new()));
     let mut write_world = Arc::new(RwLock::new(World::new()));
     let pool = rayon::ThreadPoolBuilder::new().num_threads(16).build().unwrap();
@@ -58,10 +61,27 @@ pub fn run() {
     let frame_sleep = Duration::from_millis(1000);
     //let frame_sleep = Duration::from_millis(1 / fps);
 
+    thread::spawn(move || {
+        msg_in.start_listening();
+    });
+
+    let mut clients = Vec::new();
     loop {
         let frame_start = Instant::now();
 
         // QUEUE INPUTS
+        loop {
+            match msg_in_receiver.try_recv() {
+                Ok(msg) => {
+                    // TODO switch based on message content
+                    info!("New client connected {}", msg.src_addr);
+                    clients.push(msg.src_addr);
+                },
+                Err(_) => {
+                    break;
+                }
+            }
+        }
 
         // UPDATE
         let mut updated_write_stats = Vec::<WriteState>::new();
@@ -101,9 +121,7 @@ pub fn run() {
         }
 
         // SEND
-        // look at the writestates and send each to the each client
-        // TODO for now just send the entire world. change to send just the updated parts
-        io::send_world(&write_world.read().unwrap());
+        msg_out.send_world(&clients, &write_world.read().unwrap());
 
         // SWAP
         let tmp = read_world;

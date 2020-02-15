@@ -13,7 +13,7 @@ pub struct ParticleBlock {
     pos: (i32, i32),
     dirty: bool,
     particles: HashMap<(i32, i32), Particle>, // particles are stored by global position
-    texture: [u8; (BLOCK_SIZE * BLOCK_SIZE) as usize] // maybe change to a dense array of enums?
+    texture: [u8; (BLOCK_SIZE * BLOCK_SIZE) as usize], // maybe change to a dense array of enums?
 }
 
 impl ParticleBlock {

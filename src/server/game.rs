@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::cmp::min;
-use crate::particles::{Particle, ParticleBlock, BLOCK_SIZE};
+use super::particles::{Particle, ParticleBlock, BLOCK_SIZE};
 
 pub struct World {
     blocks: HashMap<(i32, i32), ParticleBlock> // blocks are stored by global pos
@@ -12,7 +12,8 @@ impl World {
         let mut blocks = HashMap::new();
         for i in 0..BLOCK_SIZE {
             for j in 0.. BLOCK_SIZE {
-                blocks.insert((i * BLOCK_SIZE, j * BLOCK_SIZE), ParticleBlock::new((i, j)));
+                let (x, y) = (i * BLOCK_SIZE, j * BLOCK_SIZE);
+                blocks.insert((x, y), ParticleBlock::new((x, y)));
             }
         }
         World {

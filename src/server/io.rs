@@ -2,8 +2,8 @@ use std::time::{Instant, Duration};
 use std::sync::mpsc::{Receiver, Sender};
 use std::net::{UdpSocket, SocketAddr};
 
-use crate::game::World;
-use crate::particles::BLOCK_SIZE;
+use super::game::World;
+use super::particles::BLOCK_SIZE;
 
 pub struct Message{
     pub data: Vec::<u8>,

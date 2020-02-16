@@ -1,7 +1,7 @@
 use rand::prelude::*;
 
-use crate::game::{World, WriteState};
-use crate::particles::{Particle, ParticleBlock};
+use super::game::{World, WriteState};
+use super::particles::{Particle, ParticleBlock};
 
 pub fn update_particle(global_pos: (i32, i32), particle : Particle, read: &World, write: &mut WriteState) {
     let (x, y) = global_pos;

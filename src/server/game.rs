@@ -108,7 +108,7 @@ impl WriteState {
         else {
             // TODO write to queue to resolve later. or lock the global world state and write the cell
             trace!("Attempted to set outside of current block. Resetting to block limit");
-            let clamped_pos = (min(BLOCK_SIZE, global_pos.0), min(BLOCK_SIZE, global_pos.1));
+            let clamped_pos = (min(BLOCK_SIZE - 1, global_pos.0), min(BLOCK_SIZE - 1, global_pos.1));
             self.active_block.set_particle(clamped_pos, particle, mark_dirty);
         }
     }

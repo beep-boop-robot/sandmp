@@ -30,7 +30,8 @@ pub fn run() {
     //         read_world.write().unwrap().set_particle((i * 16, 0), Particle::Sand, true);
     //     }
     // }
-    read_world.write().unwrap().set_particle((33,18), Particle::Sand, true);
+    read_world.write().unwrap().set_particle((0,0), Particle::Sand, true);
+    read_world.write().unwrap().set_particle((9,9), Particle::Sand, true);
     // read_world.write().unwrap().set_particle((1,0), Particle::Sand, true);
     // read_world.write().unwrap().set_particle((2,0), Particle::Sand, true);
     // read_world.write().unwrap().set_particle((3,0), Particle::Sand, true);

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-pub const BLOCK_SIZE : i32 = 16;
+pub const BLOCK_SIZE : i32 = 8;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Particle {
@@ -13,7 +13,7 @@ pub struct ParticleBlock {
     pos: (i32, i32),
     dirty: bool,
     particles: HashMap<(i32, i32), Particle>, // particles are stored by global position
-    texture: [u8; (BLOCK_SIZE * BLOCK_SIZE) as usize], // maybe change to a dense array of enums?
+    texture: [u8; (BLOCK_SIZE * BLOCK_SIZE * 3) as usize], // maybe change to a dense array of enums?
 }
 
 impl ParticleBlock {
@@ -23,7 +23,7 @@ impl ParticleBlock {
             pos: pos,
             dirty: false,
             particles: HashMap::new(),
-            texture: [0; (BLOCK_SIZE * BLOCK_SIZE) as usize]
+            texture: [0; (BLOCK_SIZE * BLOCK_SIZE * 3) as usize]
         }
     }
 
@@ -49,10 +49,10 @@ impl ParticleBlock {
         self.dirty = mark_dirty;
 
         // TODO look up color
-        let idx = (pos_in_block.0 + (pos_in_block.1 + BLOCK_SIZE)) as usize;
+        let idx  = ((pos_in_block.0 * 3) + (pos_in_block.1 * (BLOCK_SIZE * 3))) as usize;
         self.texture[idx] = 255;
-        self.texture[idx+1] = 255;
-        self.texture[idx+2] = 255;
+        self.texture[idx + 1] = 255;
+        self.texture[idx + 2] = 255;
     }
 
     pub fn get_texture(&self) -> &[u8] {

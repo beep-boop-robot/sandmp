@@ -7,25 +7,6 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'sandmp'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--lib",
-                    "--package=sandmp"
-                ],
-                "filter": {
-                    "name": "sandmp",
-                    "kind": "lib"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
             "name": "Debug executable 'sandmp'",
             "cargo": {
                 "args": [
@@ -44,11 +25,10 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'sandmp'",
+            "name": "Debug executable 'sandmp' client",
             "cargo": {
                 "args": [
-                    "test",
-                    "--no-run",
+                    "build",
                     "--bin=sandmp",
                     "--package=sandmp"
                 ],
@@ -57,8 +37,8 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": ["client"],
             "cwd": "${workspaceFolder}"
-        }
+        },
     ]
 }

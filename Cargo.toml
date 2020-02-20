@@ -13,7 +13,13 @@ crossbeam-utils = "*"
 rand = "*"
 rayon = "*"
 rmp = "^0.8"
+rmp-serde = "*"
 
 [dependencies.futures]
 version = "*"
 features = ["thread-pool"]
+
+[dependencies.sdl2]
+version = "*"
+default-features = false
+features = ["ttf"]

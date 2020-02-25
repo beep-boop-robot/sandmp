@@ -29,7 +29,18 @@ pub fn run() {
     let texture_creator = canvas.texture_creator();
     let mut target_tex = texture_creator.create_texture_target(PixelFormatEnum::RGB24, 16, 16).map_err(|x| x.to_string()).unwrap();    
 
-    loop {
+    'running: loop {
+
+        for event in event_pump.poll_iter() { 
+            match event {
+                Event::Quit {..} |
+                Event::KeyDown { keycode: Some(Keycode::Escape), ..} => {
+                    break 'running
+                },
+                _ => {}
+            }
+        }
+
         match socket.recv_from(&mut buf) {
             Ok(_) => {
                 let mut offset = 0;

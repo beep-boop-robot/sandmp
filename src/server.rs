@@ -31,7 +31,6 @@ pub fn run() {
     //     }
     // }
     read_world.write().unwrap().set_particle((0,0), Particle::Sand, true);
-    read_world.write().unwrap().set_particle((9,9), Particle::Sand, true);
     // read_world.write().unwrap().set_particle((1,0), Particle::Sand, true);
     // read_world.write().unwrap().set_particle((2,0), Particle::Sand, true);
     // read_world.write().unwrap().set_particle((3,0), Particle::Sand, true);
@@ -68,6 +67,7 @@ pub fn run() {
                 Ok(msg) => {
                     // TODO switch based on message content
                     info!("New client connected {}", msg.src_addr);
+                    read_world.write().unwrap().set_particle((0,0), Particle::Sand, true);
                     clients.push(msg.src_addr);
                 },
                 Err(_) => {
@@ -109,8 +109,12 @@ pub fn run() {
 
         for write_state in updated_write_stats {
             // TODO handle any cross-block movement and messages generated e.t.c
-            let finished_block = write_state.finish();
-            write_world.write().unwrap().set_block(finished_block);
+            let (finished_block, cross_block) = write_state.finish();
+            let mut ww = write_world.write().unwrap();
+            ww.set_block(finished_block);
+            for (pos, particle) in cross_block {
+                ww.set_particle(pos, particle, true);
+            }
         }
 
         // SEND

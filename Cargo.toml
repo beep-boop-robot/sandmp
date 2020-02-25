@@ -13,6 +13,7 @@ crossbeam-utils = "*"
 rand = "*"
 rayon = "*"
 rmp = "^0.8"
+serde = { version = "*", features = ["derive"] }
 rmp-serde = "*"
 
 [dependencies.futures]

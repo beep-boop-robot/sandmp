@@ -70,15 +70,18 @@ impl World {
 }
 
 pub struct WriteState {
-    active_block: ParticleBlock
+    active_block: ParticleBlock,
+    cross_block_moves: Vec::<((i32, i32), Particle)>, 
 }
 
 
 impl WriteState {
 
-    pub fn new(particle_block: ParticleBlock) -> WriteState {
+    pub fn new(mut particle_block: ParticleBlock) -> WriteState {
+        particle_block.updated = true;
         WriteState {
-            active_block: particle_block
+            active_block: particle_block,
+            cross_block_moves: Vec::new()
         }
     }
 
@@ -87,8 +90,8 @@ impl WriteState {
         self.active_block.get_pos()
     }
 
-    pub fn finish(self) -> ParticleBlock {
-        self.active_block
+    pub fn finish(self) -> (ParticleBlock, Vec::<((i32, i32), Particle)>) {
+        (self.active_block, self.cross_block_moves)
     }
 
     pub fn set_cell(&mut self, particle: Particle, global_pos: (i32, i32), mark_dirty: bool) {
@@ -97,9 +100,9 @@ impl WriteState {
         // if yes. write it
         // if no, write it too the queue
         let block_pos = self.active_block.get_pos();
-        let is_in_block = global_pos.0 > block_pos.0 &&
+        let is_in_block = global_pos.0 >= block_pos.0 &&
              global_pos.0 < block_pos.0 + BLOCK_SIZE &&
-             global_pos.1 > block_pos.1 &&
+             global_pos.1 >= block_pos.1 &&
              global_pos.1 < block_pos.1 + BLOCK_SIZE;
         if is_in_block {
             let pos_in_block = (global_pos.0 - block_pos.0, global_pos.1 - block_pos.1);
@@ -108,8 +111,7 @@ impl WriteState {
         else {
             // TODO write to queue to resolve later. or lock the global world state and write the cell
             trace!("Attempted to set outside of current block. Resetting to block limit");
-            let clamped_pos = (min(BLOCK_SIZE - 1, global_pos.0), min(BLOCK_SIZE - 1, global_pos.1));
-            self.active_block.set_particle(clamped_pos, particle, mark_dirty);
+            self.cross_block_moves.push((global_pos, particle));
         }
     }
 }

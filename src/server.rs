@@ -18,8 +18,8 @@ pub fn run() {
     let _ = SimpleLogger::init(LevelFilter::Debug, Config::default());
          
     let (msg_in_sender, msg_in_receiver) = channel();
-    let msg_in = io::InboundMessages::new(msg_in_sender);
-    let msg_out = io::OutboundMessages::new();
+    let msg_in = crate::io::InboundMessages::new("0.0.0.0:34254".to_owned(), msg_in_sender);
+    let msg_out = crate::io::OutboundMessages::new("0.0.0.0:34255".to_owned());
     let mut read_world = Arc::new(RwLock::new(World::new()));
     let mut write_world = Arc::new(RwLock::new(World::new()));
     let pool = rayon::ThreadPoolBuilder::new().num_threads(16).build().unwrap();
@@ -64,11 +64,11 @@ pub fn run() {
         // QUEUE INPUTS
         loop {
             match msg_in_receiver.try_recv() {
-                Ok(msg) => {
+                Ok((msg, src_addr)) => {
                     // TODO switch based on message content
-                    info!("New client connected {}", msg.src_addr);
+                    info!("New client connected {}", src_addr);
                     read_world.write().unwrap().set_particle((0,0), Particle::Sand, true);
-                    clients.push(msg.src_addr);
+                    clients.push(src_addr);
                 },
                 Err(_) => {
                     break;
@@ -118,7 +118,7 @@ pub fn run() {
         }
 
         // SEND
-        msg_out.send_world(&clients, &write_world.read().unwrap());
+        io::send_world_updates(&clients, &msg_out, &(write_world.read().unwrap()));
 
         // SWAP
         let tmp = read_world;

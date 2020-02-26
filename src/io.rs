@@ -26,8 +26,8 @@ pub struct InboundMessages {
 
 impl InboundMessages {
 
-    pub fn new(msg_in_sender: Sender<(Msg, SocketAddr)>) -> InboundMessages {
-        let socket = UdpSocket::bind("0.0.0.0:34254").unwrap();
+    pub fn new(addr: String, msg_in_sender: Sender<(Msg, SocketAddr)>) -> InboundMessages {
+        let socket = UdpSocket::bind(addr).unwrap();
         InboundMessages {
             msg_in_sender,
             socket
@@ -57,33 +57,24 @@ pub struct OutboundMessages {
 
 impl OutboundMessages {
 
-    pub fn new() -> OutboundMessages {
-        let socket = UdpSocket::bind("0.0.0.0:34255").unwrap();
+    pub fn new(addr: String) -> OutboundMessages {
+        let socket = UdpSocket::bind(addr).unwrap();
         OutboundMessages {
             socket
         }
     }
 
 
-    pub fn send_world(&self, clients: &Vec::<SocketAddr>, world: &World) {
-        let s = Instant::now();
-        let mut bufs = Vec::new();
-        for (_, block) in world.all_blocks() {
+    pub fn send(&self, clients: &Vec::<SocketAddr>, msgs: &Vec::<Msg>) {
+        let s = Instant::now();  
+        for msg in msgs {
             let mut buf = Vec::new();
-            if block.updated {
-                rmp::encode::write_i32(&mut buf, block.get_pos().0);
-                rmp::encode::write_i32(&mut buf, block.get_pos().1);
-                rmp::encode::write_bin_len(&mut buf, block.get_texture().len() as u32);
-                rmp::encode::write_bin(&mut buf, block.get_texture());
-                rmp::encode::write_i32(&mut buf, 69);
-                bufs.push(buf);
-            }        
-        }  
-        for client in clients {
-            for buf in bufs.iter() {
+            msg.serialize(&mut Serializer::new(&mut buf)).unwrap();
+            for client in clients {
                 self.socket.send_to(&buf, client);
-            }
-        }  
+            } 
+        }
+         
          
         debug!("Serialize and send {:?}micros", s.elapsed().as_micros());
     }

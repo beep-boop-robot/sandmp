@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 
 pub const BLOCK_SIZE : i32 = 8;
+pub const BLOCKS_IN_WORLD_ROW : i32 = 2;
+pub const PARTICLES_IN_ROW : i32 = BLOCK_SIZE * BLOCKS_IN_WORLD_ROW;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Particle {
     Air,
-    Sand
+    Sand,
+    Boundary
 }
 
 #[derive(Clone)]

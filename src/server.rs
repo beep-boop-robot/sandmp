@@ -1,6 +1,7 @@
 
 use simplelog::*;
 use std::time::{Instant, Duration};
+use std::net::{IpAddr, Ipv4Addr, UdpSocket, SocketAddr};
 use std::thread;
 use std::sync::{RwLock, Arc};
 use std::sync::mpsc::channel;
@@ -31,22 +32,13 @@ pub fn run() {
     //     }
     // }
     read_world.write().unwrap().set_particle((0,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((1,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((2,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((3,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((4,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((5,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((6,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((7,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((8,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((9,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((10,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((11,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((12,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((13,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((14,0), Particle::Sand, true);
-    // read_world.write().unwrap().set_particle((15,0), Particle::Sand, true);
-
+    read_world.write().unwrap().set_particle((1,0), Particle::Sand, true);
+    read_world.write().unwrap().set_particle((2,0), Particle::Sand, true);
+    read_world.write().unwrap().set_particle((3,0), Particle::Sand, true);
+    read_world.write().unwrap().set_particle((0,1), Particle::Sand, true);
+    read_world.write().unwrap().set_particle((1,1), Particle::Sand, true);
+    read_world.write().unwrap().set_particle((2,1), Particle::Sand, true);
+    
 
 
     let fps = 60;
@@ -65,10 +57,15 @@ pub fn run() {
         loop {
             match msg_in_receiver.try_recv() {
                 Ok((msg, src_addr)) => {
-                    // TODO switch based on message content
-                    info!("New client connected {}", src_addr);
-                    read_world.write().unwrap().set_particle((0,0), Particle::Sand, true);
-                    clients.push(src_addr);
+                    match msg {
+                        crate::io::Msg::NewClient{port} => {
+                            info!("New client connected {}", src_addr);
+                            read_world.write().unwrap().set_particle((0,0), Particle::Sand, true);
+                            let client_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port);
+                            clients.push(client_addr);
+                        },
+                        _ => {}
+                    }                    
                 },
                 Err(_) => {
                     break;

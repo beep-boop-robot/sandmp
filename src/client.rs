@@ -1,5 +1,6 @@
-use std::net::{UdpSocket, SocketAddr};
-use rmp;
+use std::net::{IpAddr, Ipv4Addr, UdpSocket, SocketAddr};
+use std::sync::mpsc::channel;
+use std::thread;
 
 use sdl2::rect::Rect;
 use sdl2::pixels::Color;
@@ -7,14 +8,24 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use std::time::{Instant, Duration};
 use sdl2::pixels::PixelFormatEnum;
+use rmp;
+
+use crate::io;
 
 const SCREEN_SIZE : u32 = 512;
 
 pub fn run() {
     // NETWORK
-    let socket = UdpSocket::bind("0.0.0.0:34256").unwrap();
-    socket.send_to(&[5u8; 100], "0.0.0.0:34254");
-    let mut buf = [0u8; 512];
+    let (msg_in_sender, msg_in_receiver) = channel();
+    let outbound_msg = io::OutboundMessages::new("0.0.0.0:34256".to_owned());
+    let inbound_msg = io::InboundMessages::new("0.0.0.0:34257".to_owned(), msg_in_sender);
+    let server_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 34254);
+    let new_client_msg = io::Msg::NewClient{port: 34257};
+    outbound_msg.send(&vec!(server_addr), &vec!(new_client_msg));
+
+    thread::spawn(move || {
+        inbound_msg.start_listening();
+    });
 
     // WINDOW
     let sdl_context = sdl2::init().unwrap();
@@ -39,27 +50,24 @@ pub fn run() {
                 },
                 _ => {}
             }
-        }
-
-        match socket.recv_from(&mut buf) {
-            Ok(_) => {
-                let mut offset = 0;
-                let x = rmp::decode::read_i32(&mut &buf[offset..offset+5]).unwrap();
-                offset += 5;
-                let y = rmp::decode::read_i32(&mut &buf[offset..offset+5]).unwrap();
-                offset += 5;
-                let len = rmp::decode::read_bin_len(&mut &buf[offset..offset+5]).unwrap() as usize;
-                offset+=4;
-                let texture = buf[offset..offset+len].to_vec();                
-                println!("got data {} {} {:?}", x, y, texture);
-
-                let r = Rect::new(x, y, 8, 8);
-                target_tex.update(r, &texture, 8 * 3);
-            },
-            Err(_) => {
-
+        }  
+        
+        loop {
+            match msg_in_receiver.try_recv() {
+                Ok((msg, src_addr)) => {
+                    match msg {
+                        io::Msg::TextureUpdate{x, y, data} => {
+                            let r = Rect::new(x, y, 8, 8);
+                            target_tex.update(r, &data, 8 * 3);
+                        },
+                        _ => {}
+                    }                    
+                },
+                Err(_) => {
+                    break;
+                }
             }
-        }        
+        }
 
         canvas.clear();
         canvas.copy(&target_tex, None, None);

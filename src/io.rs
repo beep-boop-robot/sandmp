@@ -10,7 +10,9 @@ use rmps::{Deserializer, Serializer};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Msg{
-    NewClient,
+    NewClient{
+        port: u16
+    },
     TextureUpdate{
         x: i32,
         y: i32,

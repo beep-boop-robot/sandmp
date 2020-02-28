@@ -9,9 +9,9 @@ pub fn send_world_updates(clients: &Vec::<SocketAddr>, outbound: &OutboundMessag
     let s = Instant::now();
     let mut msgs = Vec::new();
     for (_, block) in world.all_blocks() {
-        if block.updated {
+        //if block.updated {
             msgs.push(Msg::TextureUpdate{x: block.get_pos().0, y: block.get_pos().1, data: block.get_texture().to_vec()});
-        }        
+        //}        
     }  
     outbound.send(clients, &msgs);
         

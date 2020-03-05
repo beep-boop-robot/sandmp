@@ -5,10 +5,9 @@ use std::net::{UdpSocket, SocketAddr};
 use serde::{Deserialize, Serialize};
 use rmps::{Deserializer, Serializer};
 
-//use super::game::World;
-//use super::particles::BLOCK_SIZE;
+use crate::particle::Particle;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 pub enum Msg{
     NewClient{
         port: u16
@@ -17,6 +16,11 @@ pub enum Msg{
         x: i32,
         y: i32,
         data: Vec::<u8>
+    },
+    SetParticle{
+        x: i32,
+        y: i32,
+        particle: Particle
     }
 }
 
@@ -41,8 +45,7 @@ impl InboundMessages {
             let mut buf = [0; 512];
             match self.socket.recv_from(&mut buf) {
                 Ok((buf_size, src_addr)) => {
-                    let msg: Msg = rmp_serde::from_read_ref(&buf[..]).unwrap();
-                    let data = buf[..buf_size].to_vec();
+                    let msg: Msg = rmp_serde::from_read_ref(&buf[..buf_size]).unwrap();
                     self.msg_in_sender.send((msg, src_addr));
                 },
                 Err(_) => {

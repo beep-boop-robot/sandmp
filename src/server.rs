@@ -13,7 +13,8 @@ pub mod particles;
 pub mod simulation;
 
 use game::{World, WriteState};
-use particles::{Particle, ParticleBlock};
+use particles::{ParticleBlock};
+use crate::particle::Particle;
 
 pub fn run() {
     let _ = SimpleLogger::init(LevelFilter::Debug, Config::default());
@@ -23,27 +24,12 @@ pub fn run() {
     let msg_out = crate::io::OutboundMessages::new("0.0.0.0:34255".to_owned());
     let mut read_world = Arc::new(RwLock::new(World::new()));
     let mut write_world = Arc::new(RwLock::new(World::new()));
-    let pool = rayon::ThreadPoolBuilder::new().num_threads(16).build().unwrap();
-
-    // DEBUG
-    // for i in 0..16 {
-    //     for j in 0..16 {
-    //         read_world.write().unwrap().set_particle((i * 16, 0), Particle::Sand, true);
-    //     }
-    // }
-    read_world.write().unwrap().set_particle((0,0), Particle::Sand, true);
-    read_world.write().unwrap().set_particle((1,0), Particle::Sand, true);
-    read_world.write().unwrap().set_particle((2,0), Particle::Sand, true);
-    read_world.write().unwrap().set_particle((3,0), Particle::Sand, true);
-    read_world.write().unwrap().set_particle((0,1), Particle::Sand, true);
-    read_world.write().unwrap().set_particle((1,1), Particle::Sand, true);
-    read_world.write().unwrap().set_particle((2,1), Particle::Sand, true);
-    
+    let pool = rayon::ThreadPoolBuilder::new().num_threads(16).build().unwrap();   
 
 
-    let fps = 60;
-    let frame_sleep = Duration::from_millis(1000);
-    //let frame_sleep = Duration::from_millis(1 / fps);
+    let fps = 30;
+    //let frame_sleep = Duration::from_millis(1000);
+    let frame_sleep = Duration::from_millis(1 / fps);
 
     thread::spawn(move || {
         msg_in.start_listening();
@@ -60,9 +46,11 @@ pub fn run() {
                     match msg {
                         crate::io::Msg::NewClient{port} => {
                             info!("New client connected {}", src_addr);
-                            read_world.write().unwrap().set_particle((0,0), Particle::Sand, true);
                             let client_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port);
                             clients.push(client_addr);
+                        },
+                        crate::io::Msg::SetParticle{x, y, particle} => {
+                            read_world.write().unwrap().set_particle((x, y), particle, true);
                         },
                         _ => {}
                     }                    
@@ -104,14 +92,18 @@ pub fn run() {
             updated_write_stats.push(w);
         }
 
+
+        let mut crossblocks = Vec::new();
         for write_state in updated_write_stats {
             // TODO handle any cross-block movement and messages generated e.t.c
             let (finished_block, cross_block) = write_state.finish();
             let mut ww = write_world.write().unwrap();
             ww.set_block(finished_block);
-            for (pos, particle) in cross_block {
-                ww.set_particle(pos, particle, true);
-            }
+            crossblocks.extend(cross_block);
+        }
+        for (pos, particle) in crossblocks {
+            let mut ww = write_world.write().unwrap();
+            ww.set_particle(pos, particle, true);
         }
 
         // SEND

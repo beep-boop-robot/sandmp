@@ -1,15 +1,9 @@
 use std::collections::HashMap;
+use crate::particle::Particle;
 
 pub const BLOCK_SIZE : i32 = 8;
-pub const BLOCKS_IN_WORLD_ROW : i32 = 2;
+pub const BLOCKS_IN_WORLD_ROW : i32 = 8;
 pub const PARTICLES_IN_ROW : i32 = BLOCK_SIZE * BLOCKS_IN_WORLD_ROW;
-
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum Particle {
-    Air,
-    Sand,
-    Boundary
-}
 
 #[derive(Clone)]
 pub struct ParticleBlock {
@@ -52,11 +46,13 @@ impl ParticleBlock {
 
     pub fn set_particle(&mut self, pos_in_block: (i32, i32), particle: Particle, mark_dirty: bool) {
         self.particles.insert(pos_in_block, particle);
-        self.dirty = mark_dirty;
+        if mark_dirty {
+            self.dirty = true;
+        }
         self.updated = true;
 
         // TODO look up color
-        let idx  = ((pos_in_block.0 * 3) + (pos_in_block.1 * (BLOCK_SIZE * 3))) as usize;
+        let idx  = ((pos_in_block.0 * 3) + (pos_in_block.1 * (BLOCK_SIZE)) * 3) as usize;
         self.texture[idx] = 255;
         self.texture[idx + 1] = 255;
         self.texture[idx + 2] = 255;

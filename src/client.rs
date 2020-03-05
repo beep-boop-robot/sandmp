@@ -11,8 +11,11 @@ use sdl2::pixels::PixelFormatEnum;
 use rmp;
 
 use crate::io;
+use crate::particle::Particle;
 
 const SCREEN_SIZE : u32 = 512;
+const TEXTURE_SIZE : u32 = 64;
+const MOUSE_RATIO : f32 = (SCREEN_SIZE / TEXTURE_SIZE) as f32;
 
 pub fn run() {
     // NETWORK
@@ -38,19 +41,31 @@ pub fn run() {
     let mut canvas = window.into_canvas().build().unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
     let texture_creator = canvas.texture_creator();
-    let mut target_tex = texture_creator.create_texture_target(PixelFormatEnum::RGB24, 16, 16).map_err(|x| x.to_string()).unwrap();    
+    let mut target_tex = texture_creator.create_texture_target(PixelFormatEnum::RGB24, TEXTURE_SIZE, TEXTURE_SIZE).map_err(|x| x.to_string()).unwrap();    
 
+
+    let mut input_sleep = Duration::from_millis(0);
+    let mut cursor_pos = (0, 0);
     'running: loop {
-
+        let frame_start = Instant::now();
         for event in event_pump.poll_iter() { 
             match event {
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), ..} => {
                     break 'running
                 },
+                Event::MouseMotion{x, y, ..} => {
+                    cursor_pos = ((x as f32 / MOUSE_RATIO) as i32, (y as f32 / MOUSE_RATIO) as i32);
+                }
                 _ => {}
             }
         }  
+
+        // debug
+        if (input_sleep >= Duration::from_millis(32)) {
+            outbound_msg.send(&vec!(server_addr), &vec!(io::Msg::SetParticle{x: cursor_pos.0, y: cursor_pos.1, particle: Particle::Sand}));
+            input_sleep = Duration::from_millis(0);
+        }
         
         loop {
             match msg_in_receiver.try_recv() {
@@ -72,5 +87,6 @@ pub fn run() {
         canvas.clear();
         canvas.copy(&target_tex, None, None);
         canvas.present();
+        input_sleep += frame_start.elapsed();
     }
 }

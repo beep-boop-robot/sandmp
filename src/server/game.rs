@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::cmp::min;
-use super::particles::{Particle, ParticleBlock, BLOCK_SIZE, BLOCKS_IN_WORLD_ROW};
+use super::particles::{ParticleBlock, BLOCK_SIZE, BLOCKS_IN_WORLD_ROW};
+use crate::particle::Particle;
 
 pub struct World {
     blocks: HashMap<(i32, i32), ParticleBlock> // blocks are stored by global pos
@@ -60,7 +61,6 @@ impl World {
             },
             None => {
                 // TODO do something useful
-                let x = 0;
             }
         }
     }
@@ -110,7 +110,7 @@ impl WriteState {
             self.active_block.set_particle(pos_in_block, particle, mark_dirty);
         }
         else {
-            // TODO write to queue to resolve later. or lock the global world state and write the cell
+            // TODO mark the block that was moved from as dirty
             trace!("Attempted to set outside of current block. Resetting to block limit");
             self.cross_block_moves.push((global_pos, particle));
         }

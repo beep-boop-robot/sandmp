@@ -1,7 +1,8 @@
 use rand::prelude::*;
 
 use super::game::{World, WriteState};
-use super::particles::{Particle, PARTICLES_IN_ROW};
+use super::particles::{PARTICLES_IN_ROW};
+use crate::particle::Particle;
 
 fn within_world_bounds(pos : (i32, i32)) -> bool {
     return pos.0 >= 0 && pos.0 < PARTICLES_IN_ROW &&  pos.1 >= 0 && pos.1 < PARTICLES_IN_ROW;

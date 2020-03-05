@@ -9,3 +9,4 @@ extern crate rmp_serde as rmps;
 pub mod server;
 pub mod client;
 mod io;
+mod particle;

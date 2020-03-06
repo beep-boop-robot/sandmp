@@ -20,10 +20,22 @@ const MOUSE_RATIO : f32 = (SCREEN_SIZE / TEXTURE_SIZE) as f32;
 pub fn run() {
     // NETWORK
     let (msg_in_sender, msg_in_receiver) = channel();
-    let outbound_msg = io::OutboundMessages::new("0.0.0.0:34256".to_owned());
-    let inbound_msg = io::InboundMessages::new("0.0.0.0:34257".to_owned(), msg_in_sender);
+    let mut socket: UdpSocket;
+    let mut client_port : u16;
+    match std::net::UdpSocket::bind("0.0.0.0:34256".to_owned()) {
+        Ok(s) => {
+            socket = s;
+            client_port = 34256;
+        },
+        Err{..} => {
+            socket = std::net::UdpSocket::bind("0.0.0.0:34257".to_owned()).unwrap();
+            client_port = 34257;
+        }
+    }
+    let outbound_msg = io::OutboundMessages::new(socket.try_clone().unwrap());
+    let inbound_msg = io::InboundMessages::new(socket.try_clone().unwrap(), msg_in_sender);
     let server_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 34254);
-    let new_client_msg = io::Msg::NewClient{port: 34257};
+    let new_client_msg = io::Msg::NewClient{port: client_port};
     outbound_msg.send(&vec!(server_addr), &vec!(new_client_msg));
 
     thread::spawn(move || {
@@ -46,6 +58,7 @@ pub fn run() {
 
     let mut input_sleep = Duration::from_millis(0);
     let mut cursor_pos = (0, 0);
+    let mut mouse_down = false;
     'running: loop {
         let frame_start = Instant::now();
         for event in event_pump.poll_iter() { 
@@ -56,16 +69,22 @@ pub fn run() {
                 },
                 Event::MouseMotion{x, y, ..} => {
                     cursor_pos = ((x as f32 / MOUSE_RATIO) as i32, (y as f32 / MOUSE_RATIO) as i32);
-                }
+                },
+                Event::MouseButtonDown{..} => {
+                    mouse_down = true
+                },
+                Event::MouseButtonUp{..} => {
+                    mouse_down = false
+                },
                 _ => {}
             }
-        }  
+        } 
 
-        // debug
-        if (input_sleep >= Duration::from_millis(32)) {
+        if (input_sleep >= Duration::from_millis(32) && mouse_down) {
             outbound_msg.send(&vec!(server_addr), &vec!(io::Msg::SetParticle{x: cursor_pos.0, y: cursor_pos.1, particle: Particle::Sand}));
             input_sleep = Duration::from_millis(0);
         }
+        
         
         loop {
             match msg_in_receiver.try_recv() {

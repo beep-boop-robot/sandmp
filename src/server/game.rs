@@ -68,6 +68,12 @@ impl World {
     pub fn is_empty(&self, global_pos: (i32, i32)) -> bool {
         self.get_particle(global_pos) == &Particle::Air
     }
+
+    pub fn clear_update_flags(&mut self) {
+        for (_, block) in self.blocks.iter_mut() {
+            block.updated = false;
+        }
+    }
 }
 
 pub struct WriteState {

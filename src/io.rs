@@ -1,6 +1,6 @@
 use std::time::{Instant, Duration};
 use std::sync::mpsc::{Receiver, Sender};
-use std::net::{UdpSocket, SocketAddr};
+use std::net::{UdpSocket, SocketAddr, TcpStream};
 
 use serde::{Deserialize, Serialize};
 use rmps::{Deserializer, Serializer};
@@ -32,8 +32,7 @@ pub struct InboundMessages {
 
 impl InboundMessages {
 
-    pub fn new(addr: String, msg_in_sender: Sender<(Msg, SocketAddr)>) -> InboundMessages {
-        let socket = UdpSocket::bind(addr).unwrap();
+    pub fn new(socket: UdpSocket, msg_in_sender: Sender<(Msg, SocketAddr)>) -> InboundMessages {
         InboundMessages {
             msg_in_sender,
             socket
@@ -62,8 +61,7 @@ pub struct OutboundMessages {
 
 impl OutboundMessages {
 
-    pub fn new(addr: String) -> OutboundMessages {
-        let socket = UdpSocket::bind(addr).unwrap();
+    pub fn new(socket: UdpSocket) -> OutboundMessages {
         OutboundMessages {
             socket
         }
@@ -79,8 +77,5 @@ impl OutboundMessages {
                 self.socket.send_to(&buf, client);
             } 
         }
-         
-         
-        debug!("Serialize and send {:?}micros", s.elapsed().as_micros());
     }
 }

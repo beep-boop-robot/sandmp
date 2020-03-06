@@ -20,15 +20,17 @@ pub fn run() {
     let _ = SimpleLogger::init(LevelFilter::Debug, Config::default());
          
     let (msg_in_sender, msg_in_receiver) = channel();
-    let msg_in = crate::io::InboundMessages::new("0.0.0.0:34254".to_owned(), msg_in_sender);
-    let msg_out = crate::io::OutboundMessages::new("0.0.0.0:34255".to_owned());
+    let mut socket = std::net::UdpSocket::bind("0.0.0.0:34254".to_owned()).unwrap();
+    let msg_in = crate::io::InboundMessages::new(socket.try_clone().unwrap(), msg_in_sender);
+    let msg_out = crate::io::OutboundMessages::new(socket.try_clone().unwrap());
     let mut read_world = Arc::new(RwLock::new(World::new()));
     let mut write_world = Arc::new(RwLock::new(World::new()));
     let pool = rayon::ThreadPoolBuilder::new().num_threads(16).build().unwrap();   
 
 
     let fps = 30;
-    //let frame_sleep = Duration::from_millis(1000);
+    let mut frame_times = Vec::new();
+    let mut time_since_log = Duration::from_millis(0);
     let frame_sleep = Duration::from_millis(1 / fps);
 
     thread::spawn(move || {
@@ -62,6 +64,7 @@ pub fn run() {
         }
 
         // UPDATE
+        read_world.write().unwrap().clear_update_flags();
         let mut updated_write_stats = Vec::<WriteState>::new();
         let mut dirty_block_pos = Vec::new();
         for (pos, block) in read_world.read().unwrap().all_blocks() {
@@ -114,10 +117,17 @@ pub fn run() {
         read_world = write_world;
         write_world = tmp;
 
-
         // SLEEP
+        time_since_log += frame_start.elapsed();
         let frame_end = frame_start.elapsed();
-        debug!("Frame end {:?}micros", frame_start.elapsed().as_micros());
+        frame_times.push(frame_end);
+        if time_since_log >= Duration::from_millis(1000) {
+            let sum : u128 = frame_times.iter().map(|x| x.as_micros()).sum();
+            let avg : u128 = sum / (frame_times.len() as u128);
+            debug!("Frame update avg {:?}micros", avg);
+            time_since_log = Duration::from_millis(0);
+            frame_times.clear();
+        }
         if frame_end < frame_sleep {
             std::thread::sleep(frame_sleep - frame_end);
         }

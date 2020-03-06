@@ -10,7 +10,7 @@ pub struct ParticleBlock {
     pos: (i32, i32),
     dirty: bool,
     particles: HashMap<(i32, i32), Particle>, // particles are stored by global position
-    texture: [u8; (BLOCK_SIZE * BLOCK_SIZE * 3) as usize], // maybe change to a dense array of enums?,
+    texture: [u8; (BLOCK_SIZE * BLOCK_SIZE * 3) as usize],
     pub updated: bool
 }
 
@@ -52,13 +52,21 @@ impl ParticleBlock {
         self.updated = true;
 
         // TODO look up color
-        let idx  = ((pos_in_block.0 * 3) + (pos_in_block.1 * (BLOCK_SIZE)) * 3) as usize;
-        self.texture[idx] = 255;
-        self.texture[idx + 1] = 255;
-        self.texture[idx + 2] = 255;
+        let (r, g, b) = get_color(particle); 
+        let idx  = ((pos_in_block.0 * 3) + (pos_in_block.1 * (BLOCK_SIZE) * 3)) as usize;
+        self.texture[idx] = r;
+        self.texture[idx + 1] = g;
+        self.texture[idx + 2] = b;
     }
 
     pub fn get_texture(&self) -> &[u8] {
         &self.texture
+    }
+}
+
+pub fn get_color(particle: Particle) -> (u8, u8, u8) {
+    match particle {
+        Particle::Sand => (195, 195, 0),
+        _ => (0,0,0)
     }
 }

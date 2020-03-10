@@ -1,6 +1,7 @@
-use std::net::{IpAddr, Ipv4Addr, UdpSocket, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, UdpSocket, SocketAddr, TcpStream};
 use std::sync::mpsc::channel;
 use std::thread;
+use std::io::{Read, Write};
 
 use sdl2::rect::Rect;
 use sdl2::pixels::Color;
@@ -8,10 +9,12 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use std::time::{Instant, Duration};
 use sdl2::pixels::PixelFormatEnum;
-use rmp;
 
-use crate::io;
+use serde::{Deserialize, Serialize};
+use rmps::{Deserializer, Serializer};
+
 use crate::particle::Particle;
+use crate::msg::Msg;
 
 const SCREEN_SIZE : u32 = 512;
 const TEXTURE_SIZE : u32 = 64;
@@ -19,28 +22,8 @@ const MOUSE_RATIO : f32 = (SCREEN_SIZE / TEXTURE_SIZE) as f32;
 
 pub fn run() {
     // NETWORK
-    let (msg_in_sender, msg_in_receiver) = channel();
-    let mut socket: UdpSocket;
-    let mut client_port : u16;
-    match std::net::UdpSocket::bind("0.0.0.0:34256".to_owned()) {
-        Ok(s) => {
-            socket = s;
-            client_port = 34256;
-        },
-        Err{..} => {
-            socket = std::net::UdpSocket::bind("0.0.0.0:34257".to_owned()).unwrap();
-            client_port = 34257;
-        }
-    }
-    let outbound_msg = io::OutboundMessages::new(socket.try_clone().unwrap());
-    let inbound_msg = io::InboundMessages::new(socket.try_clone().unwrap(), msg_in_sender);
-    let server_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 34254);
-    let new_client_msg = io::Msg::NewClient{port: client_port};
-    outbound_msg.send(&vec!(server_addr), &vec!(new_client_msg));
-
-    thread::spawn(move || {
-        inbound_msg.start_listening();
-    });
+    let mut server_stream = TcpStream::connect("0.0.0.0:34254").unwrap();
+    server_stream.set_nonblocking(true);
 
     // WINDOW
     let sdl_context = sdl2::init().unwrap();
@@ -81,26 +64,28 @@ pub fn run() {
         } 
 
         if (input_sleep >= Duration::from_millis(32) && mouse_down) {
-            outbound_msg.send(&vec!(server_addr), &vec!(io::Msg::SetParticle{x: cursor_pos.0, y: cursor_pos.1, particle: Particle::Sand}));
+            let mut buf = Vec::new();
+            let msg = Msg::SetParticle{x: cursor_pos.0, y: cursor_pos.1, particle: Particle::Sand};
+            msg.serialize(&mut Serializer::new(&mut buf)).unwrap();
+            
+            server_stream.write(&buf).unwrap();
+            server_stream.flush().unwrap();
             input_sleep = Duration::from_millis(0);
         }
         
-        
-        loop {
-            match msg_in_receiver.try_recv() {
-                Ok((msg, src_addr)) => {
-                    match msg {
-                        io::Msg::TextureUpdate{x, y, data} => {
-                            let r = Rect::new(x, y, 8, 8);
-                            target_tex.update(r, &data, 8 * 3);
-                        },
-                        _ => {}
-                    }                    
-                },
-                Err(_) => {
-                    break;
+        let mut buf = Vec::new();
+        match server_stream.read_to_end(&mut buf){
+            Ok(n) => {
+                let msg: Msg = rmp_serde::from_read_ref(&buf[..n]).unwrap();
+                match msg {
+                    Msg::TextureUpdate{x, y, data} => {
+                        let r = Rect::new(x, y, 8, 8);
+                        target_tex.update(r, &data, 8 * 3);
+                    },
+                    _ => {}
                 }
-            }
+            },
+            Err{..} => {}
         }
 
         canvas.clear();

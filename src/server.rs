@@ -14,15 +14,12 @@ pub mod simulation;
 
 use game::{World, WriteState};
 use particles::{ParticleBlock};
-use crate::particle::Particle;
+use crate::msg::Msg;
 
 pub fn run() {
     let _ = SimpleLogger::init(LevelFilter::Debug, Config::default());
          
-    let (msg_in_sender, msg_in_receiver) = channel();
-    let mut socket = std::net::UdpSocket::bind("0.0.0.0:34254".to_owned()).unwrap();
-    let msg_in = crate::io::InboundMessages::new(socket.try_clone().unwrap(), msg_in_sender);
-    let msg_out = crate::io::OutboundMessages::new(socket.try_clone().unwrap());
+    let mut client_listener = crate::server::io::TcpConnectionHandler::new("0.0.0.0:34254".to_owned());
     let mut read_world = Arc::new(RwLock::new(World::new()));
     let mut write_world = Arc::new(RwLock::new(World::new()));
     let pool = rayon::ThreadPoolBuilder::new().num_threads(16).build().unwrap();   
@@ -33,34 +30,18 @@ pub fn run() {
     let mut time_since_log = Duration::from_millis(0);
     let frame_sleep = Duration::from_millis(1 / fps);
 
-    thread::spawn(move || {
-        msg_in.start_listening();
-    });
-
-    let mut clients = Vec::new();
+    let mut msgs_in = Vec::new();
     loop {
         let frame_start = Instant::now();
 
         // QUEUE INPUTS
-        loop {
-            match msg_in_receiver.try_recv() {
-                Ok((msg, src_addr)) => {
-                    match msg {
-                        crate::io::Msg::NewClient{port} => {
-                            info!("New client connected {}", src_addr);
-                            let client_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port);
-                            clients.push(client_addr);
-                        },
-                        crate::io::Msg::SetParticle{x, y, particle} => {
-                            read_world.write().unwrap().set_particle((x, y), particle, true);
-                        },
-                        _ => {}
-                    }                    
+        for msg in msgs_in {
+            match msg {
+                Msg::SetParticle{x, y, particle} => {
+                    read_world.write().unwrap().set_particle((x, y), particle, true);
                 },
-                Err(_) => {
-                    break;
-                }
-            }
+                _ => {}
+            }           
         }
 
         // UPDATE
@@ -110,7 +91,13 @@ pub fn run() {
         }
 
         // SEND
-        io::send_world_updates(&clients, &msg_out, &(write_world.read().unwrap()));
+        let mut msgs = Vec::new();
+        for (_, block) in write_world.read().unwrap().all_blocks() {
+            if block.updated {
+                msgs.push(Msg::TextureUpdate{x: block.get_pos().0, y: block.get_pos().1, data: block.get_texture().to_vec()});
+            }
+        }
+        msgs_in = client_listener.tick(msgs);
 
         // SWAP
         let tmp = read_world;

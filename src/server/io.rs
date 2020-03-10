@@ -42,11 +42,12 @@ impl TcpConnectionHandler {
         let mut msgs= Vec::new();
         for client in self.clients.iter_mut() {
             // in
-            let mut in_buf = Vec::new();
-            let res = client.read_to_end(&mut in_buf);
+            //let mut in_buf = Vec::with_capacity(1024);
+            let mut in_buf = vec![0; 1024]; // peek the length of message
+            let res = client.read(&mut in_buf);
             match res {
                 Ok(n) => {
-                    if n >  0 {
+                    if n > 0 {
                         let msg: Msg = rmp_serde::from_read_ref(&in_buf).unwrap();
                         msgs.push(msg);
                     }
@@ -58,8 +59,8 @@ impl TcpConnectionHandler {
             for msg in msgs_to_send.iter() {
                 let mut out_buf = Vec::new();
                 msg.serialize(&mut Serializer::new(&mut out_buf)).unwrap();
+                out_buf.resize(1024, 0); // TODO prepend message length e.t.c
                 client.write(&out_buf);
-                client.flush();
             }
         }
 

@@ -66,15 +66,15 @@ pub fn run() {
         if (input_sleep >= Duration::from_millis(32) && mouse_down) {
             let mut buf = Vec::new();
             let msg = Msg::SetParticle{x: cursor_pos.0, y: cursor_pos.1, particle: Particle::Sand};
-            msg.serialize(&mut Serializer::new(&mut buf)).unwrap();
+            msg.serialize(&mut Serializer::new(&mut buf)).unwrap(); // TODO fill buffer not append
+            buf.resize(1024, 0);
             
             server_stream.write(&buf).unwrap();
-            server_stream.flush().unwrap();
             input_sleep = Duration::from_millis(0);
         }
         
-        let mut buf = Vec::new();
-        match server_stream.read_to_end(&mut buf){
+        let mut buf = vec![0; 1024];
+        match server_stream.read(&mut buf){
             Ok(n) => {
                 let msg: Msg = rmp_serde::from_read_ref(&buf[..n]).unwrap();
                 match msg {
